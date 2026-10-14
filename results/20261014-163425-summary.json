@@ -1,0 +1,26 @@
+{
+ "model": "q35-bv2",
+ "n": 381,
+ "k": 4,
+ "effort": "",
+ "temp": 0.7,
+ "top_p": 0.8,
+ "top_k": 0,
+ "best_of_k": 0.6815,
+ "pass_at_1": 0.577,
+ "solved_best1": 77,
+ "api_errors": 0,
+ "secs": 5149.9,
+ "by_bucket": {
+  "edit": 0.4334,
+  "exec": 0.6976,
+  "other": 0.6238,
+  "plan": 0.5342,
+  "read": 0.7599
+ },
+ "by_source": {
+  "claude-local": 0.7535,
+  "opencode": 0.7299,
+  "temporal": 0.6456
+ }
+}

@@ -1,0 +1,21 @@
+{
+ "n": 381,
+ "name_mean": 0.664,
+ "args_f1_mean": 0.4359,
+ "valid_mean": 0.8717,
+ "safety_mean": 1.0,
+ "name_by_bucket": {
+  "edit": 0.0323,
+  "exec": 0.7903,
+  "other": 0.25,
+  "plan": 0.2222,
+  "read": 0.5606
+ },
+ "args_f1_by_bucket": {
+  "edit": 0.148,
+  "exec": 0.4218,
+  "other": 0.4345,
+  "plan": 0.2799,
+  "read": 0.6497
+ }
+}

@@ -67,3 +67,38 @@ cutover, buy-vs-rent decision (owned 4-6× B200 ≈ $130-210K, payback 6-7 mo vs
 P0 $3K + P1 $8K + P2 $15K + P3 $14K + P4 $3K ≈ **$43K over 5 months** + serving
 $8K/mo from P3. Contingency +30% (RL instability, re-runs) → **~$55K total**.
 Every cell of the matrix lands in EXPERIMENTS.md; weights → buckets (standing rule).
+
+## 6. Gantt + B200 GPU-hour budget (unlimited parallel GPUs; critical path = analysis, not compute)
+
+| Track | W1-2 | W3-6 | W7-12 | W13-16 | W17-20 |
+|---|---|---|---|---|---|
+| A Screen 29 models | ██ 215 gh | | | | |
+| B Recipe ladder (24 runs) | setup | ██ 550 gh | | | |
+| C RL + teacher ablations | | data prep | ████ 3,600 gh | | |
+| D Integration: cascade/spec-dec/quant | | | benchmarks | ██ 430 gh | |
+| E Soak + shadow + cutover | | | | soak 144 gh | ██ serving 1,344 gh |
+| Gates | P0 frontier chart | P1 +5pt | P2 +5pt | P3 gates pass | P4 cutover |
+
+```mermaid
+gantt
+	title Exhaustive search — B200 (parallel-unconstrained)
+	dateFormat YYYY-MM-DD
+	section A Screen
+	P0 capability screen (215 gh, 10x B200x1d) :a1, 2026-10-20, 14d
+	section B Recipes
+	P1 recipe ladder 24 runs (550 gh) :b1, after a1, 21d
+	section C RL
+	env/data prep (CPU) :c0, after a1, 14d
+	P2 RL runs 8x + ablations (3600 gh) :c1, after c0, 28d
+	section D Integration
+	P3 quant+spec+cascade (430 gh) :d1, after c1, 21d
+	section E Ship
+	X6 soak 72h 2x B200 (144 gh) :e1, after d1, 7d
+	Shadow serving (1344 gh) + cutover :e2, after e1, 21d
+	```
+
+Totals: R&D ≈ 4,850 B200-h (A 215, B 550, C 3,600, D 430, E-soak 144) +
+serving/shadow ≈ 1,350 h. At ~$5.5/GPU-h: R&D ≈ $27K, serving ≈ $7.5K →
+consistent with the $55K envelope incl. contingency.
+Wall-clock driver: RL runs (2-3 d each, 4 in parallel) + analysis gates,
+NOT GPU availability.

@@ -102,3 +102,21 @@ serving/shadow ≈ 1,350 h. At ~$5.5/GPU-h: R&D ≈ $27K, serving ≈ $7.5K →
 consistent with the $55K envelope incl. contingency.
 Wall-clock driver: RL runs (2-3 d each, 4 in parallel) + analysis gates,
 NOT GPU availability.
+
+## 7. Compressed plan — 3 months (12 weeks; scope trims, more parallelism)
+
+Trims: RL = 1 algo (DPPO) x top-2/tier = 4 runs (not 8); teacher ablation = T4-self
+vs T2-offline only; P3 runs concurrent with P2 tail; soak 48h; shadow 1 wk.
+
+| Wk | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| A P0 screen 29 | ██ | ██ | | | | | | | | | | |
+| B P1 ladder 24 | | █ prep | ██ | ██ | | | | | | | | |
+| C P2 RL 4 runs | | | data | ████ | ████ | ████ | ██ | | | | | |
+| D P3 integ (concurrent) | | | | | | | ██ | ██ | ██ | | | |
+| E soak+shadow+cutover | | | | | | | | | | █48h | █sh | CUT |
+
+GPU-h: A 215 + B 550 + C 4x~450=1,800 + D 430 + E ~700 = ~3,700 R&D+ship
+(≈ $20K) + serving from wk10 (~$6K to wk12). Risks accepted: single RL algo
+(DPPO evidence strongest), no frontier-API teacher track, gates unchanged
+(a missed gate at wk7 forces champion = best P1 SFT+distill instead of RL).

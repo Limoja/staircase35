@@ -30,19 +30,28 @@ best-of-4 >= the current champion's best-of-4, measured with the same harness.
 - Qwen3.8-27B 3.8 base anchor: 0.7399; its A2 adapter: 0.6063 (dose damage replicated)
 - 3.8 phase B attempt: killed by host OOM (pinned-page RAM leak at step 0-2)
 
-## E1 — Expert iteration round 1 (next)
+## E1 — Expert iteration round 1 (RUNNING)
 
-- **Hypothesis**: sampling k=8 with the champion on the ~121 unsolved bench
-  scenarios, keeping only winning trajectories as SFT data (same windowed
-  decision-point format), and continuing training (phase C, low lr) pushes
+- **Hypothesis**: sampling k=8 with the champion on FRESH post-harvest scenarios
+  (sessions created after the 2026-10-08 harvest, bench sessions excluded,
+  0 bench-context hash hits), keeping only scenarios solved >=1x as
+  RSFT-certified contexts, and continuing training (phase C, lr 2e-5) pushes
   best-of-4 past 0.6815. STaR/SWE-Gym-style rejection sampling reports +5-19
   absolute on agentic benchmarks.
-- **Data**: wins only from E1 rollouts on unsolved scenarios. TB2 tasks are NEVER
-  used for training (benchmark contamination ban); this is self-generated data.
-- **Config**: phase C init from staircase-b adapter, max_len 8192, lr 2e-5,
-  1-2 epochs, same QLoRA rank.
-- **Gate**: best-of-4 >= 0.6815.
-- **Status**: RUNNING.
+- **Pool**: 109 scenarios from 21 fresh opencode sessions + 12 fresh claude-local
+  files (bench sessions + 2 noise rows excluded). TB2 tasks are NEVER used for
+  training (benchmark contamination ban); this is self-generated data only.
+- **Rollout result**: 29/109 solved at least once (26.6%) at temp 0.95, k=8.
+  The fresh pool is the hard tail (cluster-debugging sessions, web-tool args
+  that are near-unmatchable exactly). `results/e1-rollouts.jsonl`.
+- **Config amendment (pre-committed before training)**: 29 E1 rows alone risk
+  catastrophic forgetting of the B junction — phase C trains on
+  E1-wins (29) + B-replay (150 rows sampled from sft_mid_b.jsonl, seed 42).
+  sft_e1.jsonl = 179 rows, sha256 40fb7e09…; Bash share 63.7%.
+- **Training**: init staircase-b adapter, max_len 8192, lr 2e-5, 2 epochs,
+  warmup 20, same QLoRA rank/gates as B.
+- **Gate**: best-of-4 >= 0.6815 on the frozen bench, 381x4.
+- **Status**: chain running (train -> merge -> quant -> serve -> eval).
 
 ## E2 — (queued) DPO on win/loss pairs from E1 rollouts
 

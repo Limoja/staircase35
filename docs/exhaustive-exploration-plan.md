@@ -120,3 +120,22 @@ GPU-h: A 215 + B 550 + C 4x~450=1,800 + D 430 + E ~700 = ~3,700 R&D+ship
 (≈ $20K) + serving from wk10 (~$6K to wk12). Risks accepted: single RL algo
 (DPPO evidence strongest), no frontier-API teacher track, gates unchanged
 (a missed gate at wk7 forces champion = best P1 SFT+distill instead of RL).
+
+## 8. Budget scaling to 20K B200 GPU-hours (timeline stays 12 wks; hours buy breadth+rigor)
+
+| Allocation | GPU-h | What it buys |
+|---|---|---|
+| Base compressed plan (§7) | 3,700 | screen + ladder + 4 RL runs + ship |
+| Full RL matrix (8 runs: DPPO+GRPO, curriculum on/off, 2 seeds each) | +1,800 | algo/curriculum certainty |
+| Teacher tracks restored (T1-API public seeds + T2-offline + T4-self) | +800 | best data source proven |
+| P1 ladder widened to ALL P0 survivors (~40 runs) | +1,200 | no survivor untested |
+| P0 deep: full TB2.1 89-task × 3 seeds for every S2 survivor | +600 | real external ranking |
+| ORM verifier training + best-of-n eval | +400 | AP5 inference lever |
+| Spec-decode pair sweep (S1×S2 combos) | +300 | throughput champion |
+| Seed-variance reruns of top-5 configs | +1,500 | non-gameable results |
+| 1-wk soak + full-shadow parallel (2 replicas) | +800 | production confidence |
+| Reserve (~30%) | 6,000 | RL instability, failures, retrains |
+| **Total** | **≈ 19,100** | fits 20K |
+
+Rule: reserve is drawn down only against logged failures (ledger-tracked);
+if unused by wk10, it funds a 2nd champion RL iteration or earlier buy-pilot.

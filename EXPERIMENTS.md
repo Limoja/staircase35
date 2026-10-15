@@ -84,3 +84,17 @@ best-of-4 >= the current champion's best-of-4, measured with the same harness.
 - GRPO/RL with verifiable rewards: Unsloth docs — 4-bit MoE training unsupported on
   24GB (QLoRA SFT alone ~17.5GB). Requires >=80GB rental.
 - Learned best-of-n verifier (outcome reward model on trajectories).
+
+## E-Tmax — Assess Tmax-27B (allenai/tmax-27b) on our bench (RUNNING)
+
+- **Context**: Tmax paper (arxiv 2606.23321): DPPO RL on 15k synthetic terminal
+  environments; 27B model scores 44.9% TB2.1 (GLM-5.3-level). Their §5.1
+  independently replicates our E0 finding: SFT degrades Qwen 3.5 bases.
+- **Setup**: allenai/tmax-27b -> GGUF f16 -> IQ4_XS (15.2GB), llama.cpp :8084,
+  same frozen 381x4 bench/harness as all prior entries.
+- **Gate**: none (assessment, not adoption). Expected asymmetry: Tmax is a
+  thinking model trained for mini-SWE-agent harness, NOT our opencode-style
+  next-action format — a low score is informative about bench scope, not a
+  refutation of Tmax. Follow-up: TB2.1 via Harbor (E3) where its published
+  strength lies.
+- **Status**: eval in flight; results auto-persist to Contabo 2026-10-15/tmax27b/.

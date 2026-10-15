@@ -111,13 +111,30 @@ def main():
         rows = random.sample(rows, min(args.sample, len(rows)))
     elif args.limit:
         rows = rows[:args.limit]
+    partial_path = f'{args.out}/partial-{args.model.replace("/", "_")}.jsonl'
+    results = []
+    if os.path.exists(partial_path):
+        done_ids = set()
+        with open(partial_path) as f:
+            for l in f:
+                if l.strip():
+                    r = json.loads(l)
+                    results.append(r)
+                    done_ids.add(r['scenario_id'])
+        rows = [r for r in rows if r['scenario_id'] not in done_ids]
+        print(f'resuming: {len(done_ids)} done, {len(rows)} remaining', flush=True)
+    partial_f = open(partial_path, 'a')
     print(f'eval {args.model} on {len(rows)} scenarios, k={args.k}', flush=True)
     t0 = time.time()
-    results = []
     with cf.ThreadPoolExecutor(args.workers) as ex:
         futs = [ex.submit(run_one, args, r) for r in rows]
         for f in cf.as_completed(futs):
-            results.append(f.result())
+            r = f.result()
+            results.append(r)
+            partial_f.write(json.dumps(r, separators=(',', ':')) + '\n')
+            partial_f.flush()
+            os.fsync(partial_f.fileno())
+    partial_f.close()
     tag = time.strftime('%Y%m%d-%H%M%S')
     path = f'{args.out}/{tag}.jsonl'
     with open(path, 'w') as f:

@@ -1,141 +1,80 @@
-# Exhaustive Model × Approach × Teacher Exploration Plan (B200, offline data)
+# Exhaustive Exploration Plan — Situation / Complication / Resolution
+(B200 era · 12 weeks · 20K GPU-hours · fully offline data)
 
-Purpose: expense planning for finding the best cost-efficiency combination for
-10K users/day, 100 concurrent × 256K, fully offline. Clean slate — nothing assumed.
+## 1. SITUATION — where we stand
 
-## 1. Approach taxonomy (all considered, each gets a ladder if it survives screening)
+We operate a copilot platform (data.limoja.ai SPA + nhs-portal warehouse copilot,
+Jev heuristic routing, rag/llm services behind ch-proxy). Target load: **10K unique
+users/day swapping through 100 concurrent agent slots at up to 256K context each**.
+Hard constraint: **all data stays offline** (NHS/UCLP). Assets available: prior
+fine-tuning know-how (staircase SFT +9pts on a 35B-A3B hybrid), a 381-scenario
+frozen bench + harvested session traces, the open Tmax recipe (DPPO RL on 14.6K
+synthetic terminal environments), rented B200s at will (on-demand only), a
+**20,000 B200 GPU-hour budget**, and a **3-month deadline**.
 
-| # | Family | Approaches | Cost/iteration | Expected gain |
-|---|---|---|---|---|
-| AP1 | Supervised SFT | vanilla SFT; curriculum/staircase; RSFT/expert-iteration (STaR); replay-mixed RSFT | $ (LoRA, hrs) | +5-10 |
-| AP2 | Distillation | teacher-trace SFT; logits/KD distill; on-policy distill (GKD) | $ | +5-15 (small models) |
-| AP3 | Preference | DPO; KTO; ORPO; SimPO | $ | +2-4 |
-| AP4 | Verifier RL | GRPO; DPPO; RLOO; GSPO; PPO+PRM; curriculum-difficulty RL | $$$ (2-3d multi-GPU) | +5-20 (largest) |
-| AP5 | Inference-time | best-of-n + ORM verifier; self-consistency; scaffold/harness tuning; context engineering | $ serving-only | +5-15, no training |
-| AP6 | System optim | weight quant (INT4/8, FP8, MXFP4); KV quant; spec-decode; cascades (small→large routing); batch schedulers (vLLM/SGLang/TRT-LLM) | $ eng | 2-10× tok/$ |
-| AP7 | Data-centric | difficulty calibration; taxonomy+persona synthesis; verifier diversification; decontamination | $ | multiplies AP4 |
+## 2. COMPLICATION — why this is hard
 
-## 2. Model candidate matrix (not restricted; placeholders refreshed at Phase 0)
+1. **API economics invert at our scale**: tokens billed per user → $33K-300K/mo;
+   GPUs billed per hour (concurrency-capped) → ~$8K/mo. Offline is mandatory
+   (privacy) AND economically right — but only if the right model exists.
+2. **KV physics gates the model choice**: 100 × 256K = 25.6M resident KV tokens.
+   Classic dense >30B needs 0.5-5TB KV (6-30 B200s); hybrid/MLA MoE needs ~260GB
+   (2-4 B200s). Wrong architecture = dead on arrival.
+3. **The best model × approach × teacher combination is unknown**: candidates span
+   1.5B-1T params across dense/MoE/hybrid, system-1 vs system-2 roles; approaches
+   span 7 families with 5-20pt swings; teachers span 4 tiers with egress limits.
+4. **Quality gap to close**: escalation-tier work needs GLM-4.6-class terminal
+   performance (24.5%+ TB2.0) from an offline, affordable model; Jev must be
+   replaced without regression.
+5. **Time**: 12 weeks with RL instability risk and no second chance at a full
+   re-plan if gates miss late.
 
-### System 1 — volume tier (routing, search, summary, SQL; <300ms first token)
-| Class | Candidates (sizes 1.5-10B) |
-|---|---|
-| Dense | Qwen3 {1.7,4,8}B; Llama-3.x {1,3,8}B; Gemma-3 {1,4}; Phi-4-mini; SmolLM3-3B; Ministral-8B; Nemotron-Nano {2,8,9}B(hybrid); placeholder-S1D |
-| MoE / hybrid-attn | Qwen3.5-A3B {4,6,9}B; OLMoE-7B; DeepSeek-V2-Lite-16B-A2.4B; Jamba-mini(hybrid); GRIN-MoE; gpt-oss-20B-A3.6B; placeholder-S1M |
+## 3. RESOLUTION — the exhaustive 12-week search (compute-saturated, ledger-tracked)
 
-### System 2 — agent/escalation tier (256K sessions, terminal work)
-| Class | Candidates (10B-700B) |
-|---|---|
-| Dense | Qwen3-32B; Devstral-26B-dense; Codestral; Llama-3.3-70B; Mistral-Large; Nemotron-H-47B(hybrid); Tmax/Qwen3.6-27B; placeholder-S2D |
-| MoE / hybrid-attn | Qwen3.5-35B-A3B; Qwen3-Next-80B-A3B(hybrid!); gpt-oss-120B-A5.1B(MXFP4, 128K); MiniMax-M2-230B-A10B; GLM-4.6-open-355B-A32B; DeepSeek-V3.x-671B-A37B; Kimi-K2-1T-A32B; Qwen3-235B-A22B; Llama-4-{Scout,Maverick}; placeholder-S2M |
+### 3.1 Approach taxonomy (7 families, all screened)
+[AP1 SFT: vanilla/curriculum-staircase/RSFT/RSFT+replay | AP2 Distillation:
+trace-SFT/KD/GKD | AP3 Preference: DPO/KTO/ORPO/SimPO | AP4 Verifier RL:
+GRPO/DPPO/RLOO/GSPO/PPO+PRM/curriculum | AP5 Inference-time: best-of-n+ORM/
+self-consistency/scaffold | AP6 System: quant/KV/spec-decode/cascades/schedulers |
+AP7 Data-centric: difficulty calibration/taxonomy/verifier diversification]
 
-KV economics note: at 100×256K, hybrid/MLA/MoE (Qwen3.5-A3B, Qwen3-Next, gpt-oss,
-Nemotron-H, MiniMax-M2) fit 2-4× B200; classic dense >30B needs 6-30× B200 —
-dense S2 only viable as INT4 27-70B escalation pod.
+### 3.2 Model matrix (candidates, refreshed at P0)
+- System-1 volume (dense 1.5-10B): Qwen3{1.7,4,8}B, Llama-3.x{1,3,8}B, Gemma-3{1,4},
+  Phi-4-mini, SmolLM3-3B, Ministral-8B, Nemotron-Nano{2,8,9}B(hybrid), placeholder-S1D
+- System-1 volume (MoE/hybrid): Qwen3.5-A3B{4,6,9}B, OLMoE-7B, DeepSeek-V2-Lite,
+  Jamba-mini, GRIN-MoE, gpt-oss-20B-A3.6B, placeholder-S1M
+- System-2 agent (dense 27-70B): Qwen3-32B, Devstral-26B, Codestral, Llama-3.3-70B,
+  Mistral-Large, Nemotron-H-47B(hybrid), Tmax/Qwen3.6-27B, placeholder-S2D
+- System-2 agent (MoE/hybrid 35B-1T): Qwen3.5-35B-A3B, Qwen3-Next-80B-A3B,
+  gpt-oss-120B-A5.1B, MiniMax-M2-230B-A10B, GLM-4.6-open-355B-A32B,
+  DeepSeek-V3.x-671B, Kimi-K2-1T-A32B, Qwen3-235B-A22B, Llama-4-Scout/Maverick,
+  placeholder-S2M
+- KV rule: hybrid/MLA/MoE fits 2-4 B200 at 100x256K; dense S2 only as INT4 27-70B
+  escalation pod.
 
-## 3. Teacher inventory
-| Tier | Teachers | Use | Governance |
-|---|---|---|---|
-| T1 frontier API | GPT-5.x-Codex; Claude Opus 5.x; Gemini-3-Pro; GLM-5.3 | synthetic env/trace generation (Tmax-15k style), hard-task grading | PUBLIC/SYNTHETIC SEEDS ONLY — no NHS/UCLP data egress |
-| T2 open heavyweights (offline) | GLM-4.6-open; DeepSeek-V3.x; Kimi-K2; Qwen3-235B; gpt-oss-120B | offline trace generation, KD logits | any data |
-| T3 specialists | Tmax-27B; SWE-Gym/SWE-smith-trained; our fine-tunes | domain traces | any data |
-| T4 self/verifier | student self-generation + programmatic verifiers (outcome, graded thresholds, fuzz, multi-protocol); ORM trained on our logs | RL rewards, best-of-n reranking | any data, zero egress |
+### 3.3 Teachers (4 tiers, governance-bound)
+T1 frontier APIs (public/synthetic seeds ONLY): GPT-5.x-Codex, Opus 5.x, Gemini-3-Pro,
+GLM-5.3 | T2 open heavyweights (offline, any data): GLM-4.6-open, DeepSeek-V3.x,
+Kimi-K2, Qwen3-235B, gpt-oss-120B | T3 specialists: Tmax-27B, SWE-Gym/SWE-smith
+graduates | T4 self+verifier: student rollouts graded by programmatic verifiers
+(outcome/threshold/fuzz/multi-protocol) + ORM on our logs. TB2 tasks NEVER trained on.
 
-## 4. Exhaustive search plan (matrix: model × approach × teacher)
-
-**P0 Capability screen (wk 1-2, ~$3K):** all S1 (~15) zero-shot on routing/SQL/summary
-mini-bench + KV/token@256K + tok/s/$ on 1× B200; all S2 (~14) on 381-bench + TB2.1-20.
-Output: quality/$ frontier; cut to top-3 per tier per class. Gate: full frontier chart.
-
-**P1 Recipe ladder (wk 3-6, ~$8K):** each top model × {AP1 SFT, AP2 distill-SFT (T2/T3
-teacher), AP3 DPO, AP1-RSFT} standardized LoRA recipe (same data budget: 20K traces).
-Output: approach × model gain table → pick 2 models/tier. Gate: quality ≥ baseline+5.
-
-**P2 RL deep-dive (wk 7-12, ~$15K):** top-2 per tier × {GRPO vs DPPO} on Tmax-15k +
-self-generated envs (AP7); teacher ablation T1-API vs T2-offline vs T4-self;
-difficulty curriculum on/off. 2-3 B200-days per run. Gate: +5 over P1 champion.
-
-**P3 System integration (wk 13-16, ~$6K + $8K/mo serving):** cascade router S1→S2
-(threshold tuning), spec-decode pairs (best S1 draft → S2 target), final quant/KV
-sweep (AP6), 100-slot 72h soak on 2× B200. Gate: TTFT p95 <5s warm, ≥25K tok/s,
-<0.5% err, quality retention ≥98%.
-
-**P4 Champion lock + cutover (wk 17-20, ~$3K):** TB2.1 full run, Jev→model shadow →
-cutover, buy-vs-rent decision (owned 4-6× B200 ≈ $130-210K, payback 6-7 mo vs rent).
-
-## 5. Budget envelope (R&D)
-P0 $3K + P1 $8K + P2 $15K + P3 $14K + P4 $3K ≈ **$43K over 5 months** + serving
-$8K/mo from P3. Contingency +30% (RL instability, re-runs) → **~$55K total**.
-Every cell of the matrix lands in EXPERIMENTS.md; weights → buckets (standing rule).
-
-## 6. Gantt + B200 GPU-hour budget (unlimited parallel GPUs; critical path = analysis, not compute)
-
-| Track | W1-2 | W3-6 | W7-12 | W13-16 | W17-20 |
+### 3.4 Phases, gates, gantt (12 weeks)
+| Wk | 1-2 | 3-4 | 4-9 | 7-10 | 10-12 |
 |---|---|---|---|---|---|
-| A Screen 29 models | ██ 215 gh | | | | |
-| B Recipe ladder (24 runs) | setup | ██ 550 gh | | | |
-| C RL + teacher ablations | | data prep | ████ 3,600 gh | | |
-| D Integration: cascade/spec-dec/quant | | | benchmarks | ██ 430 gh | |
-| E Soak + shadow + cutover | | | | soak 144 gh | ██ serving 1,344 gh |
-| Gates | P0 frontier chart | P1 +5pt | P2 +5pt | P3 gates pass | P4 cutover |
+| Track | P0 screen 29 models (quality/KV/tok-per-$) | P1 ladder ALL survivors (~40 runs, 4 recipes) | P2 RL matrix 8 runs + 3 teacher tracks | P3 cascade/spec-dec/quant (concurrent) | soak 1wk, dual shadow, cutover |
+| Gate | frontier chart | +5pt over base | +5pt over P1 (wk7 gate; miss => P1 champion ships) | TTFT p95<5s warm, 25K tok/s, <0.5% err | Jev>= parity, TB2.1 final |
 
-```mermaid
-gantt
-	title Exhaustive search — B200 (parallel-unconstrained)
-	dateFormat YYYY-MM-DD
-	section A Screen
-	P0 capability screen (215 gh, 10x B200x1d) :a1, 2026-10-20, 14d
-	section B Recipes
-	P1 recipe ladder 24 runs (550 gh) :b1, after a1, 21d
-	section C RL
-	env/data prep (CPU) :c0, after a1, 14d
-	P2 RL runs 8x + ablations (3600 gh) :c1, after c0, 28d
-	section D Integration
-	P3 quant+spec+cascade (430 gh) :d1, after c1, 21d
-	section E Ship
-	X6 soak 72h 2x B200 (144 gh) :e1, after d1, 7d
-	Shadow serving (1344 gh) + cutover :e2, after e1, 21d
-	```
+Critical path = RL runs + analysis gates (GPUs unlimited). Fallback ladder:
+RL miss -> best P1 SFT+distill champion; P3 miss -> reduce concurrent slots to 60.
 
-Totals: R&D ≈ 4,850 B200-h (A 215, B 550, C 3,600, D 430, E-soak 144) +
-serving/shadow ≈ 1,350 h. At ~$5.5/GPU-h: R&D ≈ $27K, serving ≈ $7.5K →
-consistent with the $55K envelope incl. contingency.
-Wall-clock driver: RL runs (2-3 d each, 4 in parallel) + analysis gates,
-NOT GPU availability.
+### 3.5 GPU-hour allocation (20K envelope)
+Base 3,700 + full RL matrix 1,800 + teacher tracks 800 + widened ladders 1,200 +
+deep TB2.1 600 + ORM/best-of-n 400 + spec-pair sweep 300 + seed-variance reruns 1,500 +
+long soak/dual shadow 800 + 30% reserve 6,000 = **~19,100 of 20,000**.
+Reserve drawn only against logged failures; if unused by wk10 -> 2nd champion RL
+iteration. Cash: ~$105K at $5.5/GPU-h worst case; serving pilot from wk10 ~$8K/mo;
+end-state owned 4-6x B200 ($130-210K, payback 6-7 mo vs renting).
 
-## 7. Compressed plan — 3 months (12 weeks; scope trims, more parallelism)
-
-Trims: RL = 1 algo (DPPO) x top-2/tier = 4 runs (not 8); teacher ablation = T4-self
-vs T2-offline only; P3 runs concurrent with P2 tail; soak 48h; shadow 1 wk.
-
-| Wk | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| A P0 screen 29 | ██ | ██ | | | | | | | | | | |
-| B P1 ladder 24 | | █ prep | ██ | ██ | | | | | | | | |
-| C P2 RL 4 runs | | | data | ████ | ████ | ████ | ██ | | | | | |
-| D P3 integ (concurrent) | | | | | | | ██ | ██ | ██ | | | |
-| E soak+shadow+cutover | | | | | | | | | | █48h | █sh | CUT |
-
-GPU-h: A 215 + B 550 + C 4x~450=1,800 + D 430 + E ~700 = ~3,700 R&D+ship
-(≈ $20K) + serving from wk10 (~$6K to wk12). Risks accepted: single RL algo
-(DPPO evidence strongest), no frontier-API teacher track, gates unchanged
-(a missed gate at wk7 forces champion = best P1 SFT+distill instead of RL).
-
-## 8. Budget scaling to 20K B200 GPU-hours (timeline stays 12 wks; hours buy breadth+rigor)
-
-| Allocation | GPU-h | What it buys |
-|---|---|---|
-| Base compressed plan (§7) | 3,700 | screen + ladder + 4 RL runs + ship |
-| Full RL matrix (8 runs: DPPO+GRPO, curriculum on/off, 2 seeds each) | +1,800 | algo/curriculum certainty |
-| Teacher tracks restored (T1-API public seeds + T2-offline + T4-self) | +800 | best data source proven |
-| P1 ladder widened to ALL P0 survivors (~40 runs) | +1,200 | no survivor untested |
-| P0 deep: full TB2.1 89-task × 3 seeds for every S2 survivor | +600 | real external ranking |
-| ORM verifier training + best-of-n eval | +400 | AP5 inference lever |
-| Spec-decode pair sweep (S1×S2 combos) | +300 | throughput champion |
-| Seed-variance reruns of top-5 configs | +1,500 | non-gameable results |
-| 1-wk soak + full-shadow parallel (2 replicas) | +800 | production confidence |
-| Reserve (~30%) | 6,000 | RL instability, failures, retrains |
-| **Total** | **≈ 19,100** | fits 20K |
-
-Rule: reserve is drawn down only against logged failures (ledger-tracked);
-if unused by wk10, it funds a 2nd champion RL iteration or earlier buy-pilot.
+Every experiment: pre-committed gate + EXPERIMENTS.md ledger entry + weights to
+buckets. Governance: offline-only for sensitive data; API teachers on public seeds.

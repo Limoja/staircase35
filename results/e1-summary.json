@@ -1,0 +1,26 @@
+{
+ "model": "q35-cv2",
+ "n": 381,
+ "k": 4,
+ "effort": "",
+ "temp": 0.7,
+ "top_p": 0.8,
+ "top_k": 0,
+ "best_of_k": 0.679,
+ "pass_at_1": 0.5777,
+ "solved_best1": 74,
+ "api_errors": 24,
+ "secs": 5155.6,
+ "by_bucket": {
+  "edit": 0.4634,
+  "exec": 0.6927,
+  "other": 0.5248,
+  "plan": 0.4743,
+  "read": 0.7716
+ },
+ "by_source": {
+  "claude-local": 0.6954,
+  "opencode": 0.709,
+  "temporal": 0.6578
+ }
+}

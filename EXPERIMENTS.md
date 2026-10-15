@@ -51,7 +51,18 @@ best-of-4 >= the current champion's best-of-4, measured with the same harness.
 - **Training**: init staircase-b adapter, max_len 8192, lr 2e-5, 2 epochs,
   warmup 20, same QLoRA rank/gates as B.
 - **Gate**: best-of-4 >= 0.6815 on the frozen bench, 381x4.
-- **Status**: chain running (train -> merge -> quant -> serve -> eval).
+- **Result**: **0.6790 — NEGATIVE, below gate (−0.0025 vs champion). B stays.**
+  - pass@1 0.5777 (~tie), 24 api_errors (transient server hiccups during eval;
+    champion run had 0), buckets: edit 0.4634 (+0.03), read 0.7716 (+0.01),
+    exec 0.6927 (−0.005), plan 0.4743 (−0.06), other 0.5248 (−0.10).
+  - Training itself was clean (46 steps, train_loss 0.877, merge 230/230
+    max|Δ|=0.0044). `results/e1-summary.json`.
+- **Conclusion**: RSFT on 29 hard-tail wins + replay is not enough signal at this
+  scale — and the fresh pool's 26.6% solve rate shows the hard tail is dominated
+  by scenarios with near-unmatchable gold args (web tools). E2 (DPO on
+  win/loss pairs over a LARGER rollout pool) is the next lever; GRPO needs >=80GB.
+- **Status**: DONE (negative). Champion restored to serving. GGUF + logs archived
+  to contabo:qwen35-posttraining/2026-10-15/e1-c/.
 
 ## E2 — (queued) DPO on win/loss pairs from E1 rollouts
 

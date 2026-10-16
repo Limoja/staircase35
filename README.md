@@ -1,4 +1,19 @@
-# staircase35: Post-training a 35B MoE for terminal agentic work on one 24GB GPU
+# staircase35: small open agentic models for trusts, at flat cost
+
+## Mission
+
+The barrier is the model. A free public analytics tool, and trusts running agents
+on-premises at flat cost, need small open models that act reliably and safely.
+Our 19 trials show today's open models do not: the base model picks the wrong
+tool on every editing and planning step, and prompting alone gave no gain.
+
+We will release, openly for the community: an optimised agentic model, fine-tuned
+and quantised to the smallest size without measurable loss; the fine-tuning
+recipes we compare; a calibrated decision model (Laya) for safe action gating;
+and agentic and NHS-data benchmarks. The model will power our free public-data
+analytics tool and run on a single trust GPU.
+
+## Project status (this repo)
 
 Qwen3.5-35B-A3B (MoE, 3B active) post-trained in a 3-phase SFT "staircase" to emit
 the next tool action directly at long context (262k). All phases trained QLoRA on a
